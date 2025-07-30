@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(mkdir:*)",
+      "Bash(mkdir:*)",
+      "Bash(mkdir:*)",
+      "Bash(mkdir:*)",
+      "Bash(go mod init:*)",
+      "Bash(tree:*)",
+      "Bash(chmod:*)",
+      "Bash(touch:*)",
+      "Bash(npm create:*)",
+      "Bash(rm:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker compose:*)",
+      "Bash(./dev-setup.sh:*)"
+    ],
+    "deny": []
+  }
+}

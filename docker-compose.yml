@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  websocket-gateway:
+    build:
+      context: ./services/websocket-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  presence-service:
+    build:
+      context: ./services/presence-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - REDIS_URL=redis://redis:6379
+      - REDIS_DB=0
+      - PRESENCE_TTL_SECONDS=120
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  redis_data:

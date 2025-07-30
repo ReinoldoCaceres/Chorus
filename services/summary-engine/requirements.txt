@@ -1,0 +1,12 @@
+langchain==0.1.0
+langchain-openai==0.0.5
+openai==1.10.0
+chromadb==0.4.22
+celery[redis]==5.3.4
+redis==5.0.1
+pydantic==2.5.3
+pydantic-settings==2.1.0
+structlog==24.1.0
+httpx==0.26.0
+fastapi==0.109.0
+uvicorn[standard]==0.25.0

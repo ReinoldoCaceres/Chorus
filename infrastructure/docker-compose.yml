@@ -1,0 +1,319 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: chorus-postgres
+    environment:
+      POSTGRES_USER: chorus
+      POSTGRES_PASSWORD: chorus_password
+      POSTGRES_DB: chorus_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chorus -d chorus_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: chorus-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chorus-chromadb
+    environment:
+      CHROMA_SERVER_AUTH_PROVIDER: "chromadb.auth.token.TokenAuthServerProvider"
+      CHROMA_SERVER_AUTH_CREDENTIALS: "chorus-secret-token"
+      PERSIST_DIRECTORY: /chroma/chroma
+    volumes:
+      - chromadb_data:/chroma/chroma
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # Workflow Engine Service
+  workflow-engine:
+    build:
+      context: ../services/workflow-engine
+      dockerfile: ../../infrastructure/docker/base-go.dockerfile
+    container_name: chorus-workflow-engine
+    environment:
+      SERVICE_NAME: workflow-engine
+      PORT: 8081
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: chorus
+      DB_PASSWORD: chorus_password
+      DB_NAME: chorus_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ../services/workflow-engine:/app
+      - go_mod_cache:/go/pkg/mod
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # Process Monitor Service
+  process-monitor:
+    build:
+      context: ../services/process-monitor
+      dockerfile: ../../infrastructure/docker/base-python.dockerfile
+    container_name: chorus-process-monitor
+    environment:
+      SERVICE_NAME: process-monitor
+      PORT: 8082
+      DATABASE_URL: postgresql://chorus:chorus_password@postgres:5432/chorus_db
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ../services/process-monitor:/app
+      - python_cache:/root/.cache
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # System Agent Service
+  system-agent:
+    build:
+      context: ../services/system-agent
+      dockerfile: ../../infrastructure/docker/base-python.dockerfile
+    container_name: chorus-system-agent
+    environment:
+      SERVICE_NAME: system-agent
+      PORT: 8083
+      DATABASE_URL: postgresql://chorus:chorus_password@postgres:5432/chorus_db
+      REDIS_URL: redis://redis:6379
+      CHROMADB_HOST: chromadb
+      CHROMADB_PORT: 8000
+      CHROMADB_AUTH_TOKEN: chorus-secret-token
+    volumes:
+      - ../services/system-agent:/app
+      - python_cache:/root/.cache
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # API Gateway Service
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: ../../infrastructure/docker/base-node.dockerfile
+    container_name: chorus-api-gateway
+    environment:
+      SERVICE_NAME: api-gateway
+      PORT: 8084
+      NODE_ENV: development
+      WORKFLOW_ENGINE_URL: http://workflow-engine:8081
+      PROCESS_MONITOR_URL: http://process-monitor:8082
+      SYSTEM_AGENT_URL: http://system-agent:8083
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: chorus-jwt-secret-key
+    volumes:
+      - ../services/api-gateway:/app
+      - node_modules_gateway:/app/node_modules
+    ports:
+      - "8084:8084"
+    depends_on:
+      redis:
+        condition: service_healthy
+      workflow-engine:
+        condition: service_healthy
+      process-monitor:
+        condition: service_healthy
+      system-agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # Admin UI Service
+  admin-ui:
+    build:
+      context: ../services/admin-ui
+      dockerfile: ../../infrastructure/docker/base-node.dockerfile
+      args:
+        BUILD_MODE: development
+    container_name: chorus-admin-ui
+    environment:
+      SERVICE_NAME: admin-ui
+      PORT: 3000
+      NODE_ENV: development
+      REACT_APP_API_GATEWAY_URL: http://localhost:8084
+    volumes:
+      - ../services/admin-ui:/app
+      - node_modules_admin:/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ../services/notification-service
+      dockerfile: ../../infrastructure/docker/base-python.dockerfile
+    container_name: chorus-notification-service
+    environment:
+      SERVICE_NAME: notification-service
+      PORT: 8085
+      DATABASE_URL: postgresql://chorus:chorus_password@postgres:5432/chorus_db
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_USE_TLS: "false"
+    volumes:
+      - ../services/notification-service:/app
+      - python_cache:/root/.cache
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: chorus-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      admin-ui:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+  # MailHog for development email testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: chorus-mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - chorus-network
+    restart: unless-stopped
+
+networks:
+  chorus-network:
+    driver: bridge
+    name: chorus-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  chromadb_data:
+    driver: local
+  go_mod_cache:
+    driver: local
+  python_cache:
+    driver: local
+  node_modules_gateway:
+    driver: local
+  node_modules_admin:
+    driver: local
