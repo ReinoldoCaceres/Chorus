@@ -174,3 +174,4 @@ dump.rdb
 *.lock
 
 .claude
+CLAUDE.md
