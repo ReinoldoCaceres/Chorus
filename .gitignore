@@ -172,3 +172,5 @@ dump.rdb
 
 # MongoDB
 *.lock
+
+.claude
