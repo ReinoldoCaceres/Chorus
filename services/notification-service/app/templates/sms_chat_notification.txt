@@ -1,0 +1,12 @@
+🔔 Chorus Chat Alert
+
+New message from {{ sender_name }}:
+"{{ message_content | truncate(100) }}"
+
+Session: {{ session_id }}
+Customer: {{ customer_name }}
+Time: {{ timestamp }}
+
+{% if chat_url %}Open chat: {{ chat_url }}{% endif %}
+
+Reply STOP to unsubscribe

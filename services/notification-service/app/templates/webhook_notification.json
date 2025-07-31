@@ -1,0 +1,22 @@
+{
+  "event_type": "{{ event_type }}",
+  "timestamp": "{{ timestamp }}",
+  "tenant_id": "{{ tenant_id }}",
+  "notification": {
+    "id": "{{ notification_id }}",
+    "channel": "{{ channel }}",
+    "subject": "{{ subject }}",
+    "message": "{{ message_content }}",
+    "recipient": "{{ recipient }}",
+    "data": {{ data | tojson }}
+  },
+  "source": {
+    "service": "chorus-notification-service",
+    "version": "1.0.0"
+  },
+  "metadata": {
+    "delivery_attempt": {{ delivery_attempt | default(1) }},
+    "priority": "{{ priority | default('normal') }}",
+    "tags": {{ tags | default([]) | tojson }}
+  }
+}

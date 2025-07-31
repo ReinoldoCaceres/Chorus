@@ -3,7 +3,7 @@ langchain-openai==0.0.5
 openai==1.10.0
 chromadb==0.4.22
 celery[redis]==5.3.4
-redis==5.0.1
+redis==4.6.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
 structlog==24.1.0

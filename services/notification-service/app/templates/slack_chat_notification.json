@@ -1,0 +1,61 @@
+{
+  "text": "🔔 New chat message in Chorus",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "New Chat Message"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*From:* {{ sender_name }} ({{ sender_type }})\n*Customer:* {{ customer_name }}\n*Session:* {{ session_id }}"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Message:*\n{{ message_content }}"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Time:* {{ timestamp }}{% if conversation_topic %}\n*Topic:* {{ conversation_topic }}{% endif %}{% if priority %}\n*Priority:* {{ priority }}{% endif %}"
+      }
+    },
+    {
+      "type": "actions",
+      "elements": [
+        {% if chat_url %}
+        {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "Open Chat"
+          },
+          "url": "{{ chat_url }}",
+          "style": "primary"
+        }
+        {% endif %}
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "plain_text",
+          "text": "📱 Chorus Live Chat Platform"
+        }
+      ]
+    }
+  ]
+}

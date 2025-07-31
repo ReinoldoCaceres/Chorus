@@ -124,7 +124,7 @@ CREATE TABLE monitoring.alerts (
     source VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    metadata JSONB DEFAULT '{}',
+    alert_metadata JSONB DEFAULT '{}',
     status VARCHAR(50) DEFAULT 'active',
     acknowledged_at TIMESTAMP WITH TIME ZONE,
     acknowledged_by VARCHAR(255),

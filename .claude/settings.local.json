@@ -19,7 +19,16 @@
       "Bash(npx tailwindcss init:*)",
       "Bash(docker-compose:*)",
       "Bash(docker compose:*)",
-      "Bash(./dev-setup.sh:*)"
+      "Bash(./dev-setup.sh:*)",
+      "Bash(docker:*)",
+      "Bash(\"/mnt/c/Program Files/Docker/Docker/resources/bin/docker\" --version)",
+      "Bash(\"/mnt/c/Program Files/Docker/Docker/resources/bin/docker\" ps)",
+      "Bash(cat:*)",
+      "Bash(python:*)",
+      "Bash(go mod:*)",
+      "Bash(bash:*)",
+      "Bash(go build:*)",
+      "Bash(./validate-go-build.bat)"
     ],
     "deny": []
   }

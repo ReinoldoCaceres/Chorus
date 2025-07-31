@@ -20,14 +20,22 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies (use npm install if package-lock.json doesn't exist)
+RUN if [ -f package-lock.json ]; then \
+        npm ci --omit=dev && npm cache clean --force; \
+    else \
+        npm install --omit=dev && npm cache clean --force; \
+    fi
 
 # Development stage
 FROM base as development
 
 # Install all dependencies including dev dependencies
-RUN npm ci && npm cache clean --force
+RUN if [ -f package-lock.json ]; then \
+        npm ci && npm cache clean --force; \
+    else \
+        npm install && npm cache clean --force; \
+    fi
 
 # Copy application code
 COPY . .
